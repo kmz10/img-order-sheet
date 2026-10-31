@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#173f35">
+<title>IMG Sysco / FreshPoint Order Sheet</title>
+<style>
+:root{--green:#173f35;--green2:#245c4d;--cream:#f5f7f4;--line:#e2e8e3;--muted:#64736b}
+*{box-sizing:border-box}body{margin:0;background:var(--cream);color:#17231e;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--green);color:white;padding:22px 18px 18px;position:sticky;top:0;z-index:5;box-shadow:0 2px 12px #0002}
+.head{max-width:1100px;margin:auto}h1{font-size:clamp(21px,4vw,30px);margin:0 0 5px}header p{margin:0;color:#d8e6df;font-size:14px}
+main{max-width:1100px;margin:18px auto;padding:0 14px 50px}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.search{flex:1;min-width:180px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font:inherit;background:white}
+button{border:0;border-radius:10px;padding:11px 14px;font:600 14px system-ui;cursor:pointer}
+.primary{background:var(--green2);color:white}.secondary{background:white;color:var(--green);border:1px solid var(--line)}
+.status{font-size:13px;color:var(--muted);margin:0 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px}
+section{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 2px 6px #163b2c08}
+h2{margin:0;padding:13px 15px;background:#eaf1ec;color:var(--green);font-size:16px;letter-spacing:.03em}
+.items{padding:4px 13px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:12px;align-items:center;padding:9px 2px;border-bottom:1px solid #edf1ee;min-height:48px}
+.item:last-child{border-bottom:0}.name{font-size:14px;overflow-wrap:anywhere}
+.qty{width:100%;min-width:0;padding:9px 8px;border:1px solid #d6dfd8;border-radius:9px;text-align:center;font:inherit;font-size:16px;background:#fbfdfb}
+.qty:focus,.search:focus{outline:2px solid #76a993;outline-offset:1px}
+.empty{padding:16px;color:var(--muted);font-size:13px}
+footer{max-width:1100px;margin:0 auto;padding:0 14px 28px;color:var(--muted);font-size:12px}
+@media(max-width:480px){header{padding:16px 14px}.toolbar button{flex:1}.item{grid-template-columns:minmax(0,1fr) 88px;padding:8px 0}.name{font-size:13px}}
+@media print{header{position:static;background:white;color:black;box-shadow:none}header p{color:#333}.toolbar,.status,footer{display:none}body{background:white}.grid{display:block}section{break-inside:avoid;margin-bottom:12px;box-shadow:none}.qty{border:1px solid #999}}
+</style>
+</head>
+<body>
+<header><div class="head"><h1>IMG Sysco / FreshPoint Order Sheet</h1><p>Add quantities beside the items you need. Your entries save automatically on this device.</p></div></header>
+<main>
+<div class="toolbar">
+<input id="search" class="search" type="search" placeholder="Search items…" aria-label="Search items">
+<button class="secondary" id="print">Print</button>
+<button class="secondary" id="export">Export order</button>
+<button class="secondary" id="clear">Clear quantities</button>
+</div>
+<p class="status" id="status" aria-live="polite">0 items with quantities</p>
+<div class="grid" id="sections"></div>
+</main>
+<footer>Quantities are saved in this browser on this device. To keep a copy or share an order, use “Export order”.</footer>
+<script>
+const catalog = {"DELI ITEMS / GRILL ITEMS": ["RndmCHixBrst", "6 oz Chix Brst", "Turkey", "Ham", "Tuna", "Swiss", "Cheddar", "Provolone", "American", "MozzShrdd", "CheddarShrd", "Parm", "Boiled Eggs", "Pickles", "WHT WRP", "Hoagie", "MultiGrainCiabat", "SourDuogh Bread", "WhitePullman Bread"], "BREAKFAST": ["Liquid Eggs", "Pork Sausage Patty", "TurkeySausage Patty", "Pork Link", "Turkey Link", "Chix Sausage", "Chix Apple Sausage", "Bacon", "Home Fries", "Tator Tots", "Sweet Pot Tots", "HashBrown", "PotWedGes", "Pancake", "Waffle", "FrenchToastStick", "BaGels: Ever: ASSTD:", "YogurtPouchStrw", "YogurtPouch Van", "GreekPlAinYogurt", "GreekVanilla", "MapLe Syrup", "AsstDCereals:", "AsstdCerealsWellNess:", "Cold Cereals:", "Oatmeal"], "PAPER": ["Xpress napkins", "40x46liner", "Gloves — M / L / XL", "9oz Grnwrecup", "8x8ToGO", "6x9ToGO", "SoupCup8oz", "SoupLid:", "Parshment", "Fork sRST", "Spoon Srst", "Knife Srst", "Plastic Wrap18’", "aluminumFoil", "BunRackBags", "FULL PAN FOIL", "half Pan FOiL:"], "FRESH POINT": ["Garlic:", "Romaine", "Grape Tomatoes", "Tomatoes 5x6", "Shredded Carrots", "Broccoli", "Cauliflower", "Zucchini", "Squash", "Green Beans", "Onions W & R", "B-Peppers G & R", "Clementines", "Red-Apples", "Bananas", "Grapes red / Green", "Strawberry", "Blueberries", "cantaloupe:", "honeydew:", "pineapple:", "Lime-lemon Juice Qt:"], "ADD-ONS": ["JasmineRice", "Asian Station Sauces", "SUnBUtter", "ChocolateChips:"], "ALWAYS NEEDED": ["mayoDisp", "mayoGal:", "Dijon", "mustardDisp", "ketchupDisp", "BBQDispenser", "CreamCheeseTuib:", "CottageCheese", "Grape Jelly", "StrawBerryPreserve", "WHT Vinegar", "RED Vinegar", "Balsamic Vinegar", "Sunflower Seeds", "Pepitas", "Craisins", "SoySauceGal:", "Banana PPRS", "CanolaOil", "OLiveOiL", "KoshErSaLt", "BlKpeppErTblGrnd:", "PapriKa:", "GranuLateDGarlic:", "CornStarch"], "CHEMICALS": ["Rinse Aid", "Diverpak", "Pan Clean", "Sanitizer Jq512", "Freeze Gel", "Drain Maintainer", "Prominence", "Eden (fruitWash)", "Purple Pads", "HD Orange Pads", "Grill Cleaner Deg"], "MISC": ["CHocCOokie4.5oz", "SmorECooKie4.5oz", "CarnivalCooke4.5oz"], "EXTRA PRODUCE": [], "CANNED ITEMS": []};
+const storageKey = "img-sysco-order-quantities-v1";
+let quantities = {};
+try { quantities = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch { quantities = {}; }
+const root = document.getElementById("sections");
+const search = document.getElementById("search");
+const status = document.getElementById("status");
+function save(){ localStorage.setItem(storageKey, JSON.stringify(quantities)); updateStatus(); }
+function updateStatus(){
+  const count = Object.values(quantities).filter(v => String(v).trim() !== "").length;
+  status.textContent = `${count} item${count===1?"":"s"} with quantities`;
+}
+function render(){
+  const term = search.value.trim().toLowerCase();
+  root.innerHTML = "";
+  for(const [category, names] of Object.entries(catalog)){
+    const matches = names.filter(name => name.toLowerCase().includes(term));
+    if(term && !matches.length) continue;
+    const section = document.createElement("section");
+    const heading = document.createElement("h2"); heading.textContent = category; section.appendChild(heading);
+    const list = document.createElement("div"); list.className = "items";
+    if(!matches.length){ const empty=document.createElement("div");empty.className="empty";empty.textContent="No items listed in this section yet.";list.appendChild(empty); }
+    for(const name of matches){
+      const row=document.createElement("label");row.className="item";
+      const title=document.createElement("span");title.className="name";title.textContent=name;
+      const input=document.createElement("input");input.className="qty";input.type="text";input.inputMode="decimal";input.placeholder="Qty";input.setAttribute("aria-label",`Quantity for ${name}`);input.value=quantities[category+"::"+name]||"";
+      input.addEventListener("input",()=>{const key=category+"::"+name;if(input.value.trim())quantities[key]=input.value;else delete quantities[key];save();});
+      row.append(title,input);list.appendChild(row);
+    }
+    section.appendChild(list);root.appendChild(section);
+  }
+}
+search.addEventListener("input",render);
+document.getElementById("print").addEventListener("click",()=>window.print());
+document.getElementById("clear").addEventListener("click",()=>{
+  if(confirm("Clear every quantity on this device?")){quantities={};save();render();}
+});
+document.getElementById("export").addEventListener("click",()=>{
+  const rows=[["Category","Item","Quantity"]];
+  for(const [category,names] of Object.entries(catalog)) for(const name of names){
+    const value=quantities[category+"::"+name];
+    if(value && String(value).trim()) rows.push([category,name,value]);
+  }
+  const csv=rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="IMG-order.csv";a.click();URL.revokeObjectURL(url);
+});
+render();updateStatus();
+</script>
+</body></html>
